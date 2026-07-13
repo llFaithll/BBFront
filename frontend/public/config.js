@@ -1,0 +1,3 @@
+window.APP_CONFIG = {
+    BACKEND_URL: "INSERISCI_QUI_URL_RENDER"
+};
