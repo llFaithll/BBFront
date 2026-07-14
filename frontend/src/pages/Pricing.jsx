@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Sparkle, Landmark, FloppyDisk } from "@phosphor-icons/react";
+import { Sparkle, House, Check } from "@phosphor-icons/react";
 
 export default function Pricing() {
   const [form, setForm] = useState({
@@ -83,7 +83,7 @@ export default function Pricing() {
           {/* Sezione Tassa di Soggiorno Comune */}
           <div className="border border-border rounded-md bg-card p-6">
             <div className="flex items-center gap-2 mb-4">
-              <Landmark size={20} className="text-primary" weight="duotone" />
+              <House size={20} className="text-primary" weight="duotone" />
               <div className="overline">Regolamento Tassa di Soggiorno</div>
             </div>
             <p className="text-xs text-muted-foreground mb-4">
@@ -117,7 +117,7 @@ export default function Pricing() {
               </div>
             </div>
             <Button onClick={saveTaxSettings} disabled={savingTax} variant="secondary" className="w-full mt-4 rounded-md">
-              <FloppyDisk size={16} className="mr-2" />
+              <Check size={16} className="mr-2" />
               {savingTax ? "Salvataggio..." : "Salva Regole Comune"}
             </Button>
           </div>
