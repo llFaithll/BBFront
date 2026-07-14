@@ -1,0 +1,57 @@
+{
+  "summary": "Iteration 3 — ROSS 1000 Lazio ISTAT XML export feature fully verified. Created new test file /app/backend/tests/test_ross1000.py with 9 focused tests covering settings defaults/upsert, preview math, XML structure (declaration, root, codice, prodotto=CASABNB, one movimento per day in YYYYMMDD, mandatory struttura fields, arrivi/partenze), camereoccupate math with 2 overlapping bookings, ITALIA->100000100 & FRANCIA->100000203 country mapping, all 4 channel mappings (DIRETTA WEB/AIRBNB/BOOKING.COM/ALTRO PORTALE), and 401-without-auth. Full regression suite (26 tests total, ROSS 1000 + all previous endpoints) passes 100%. Note: /api/pricing/suggest which was failing in iterations 1 & 2 due to EMERGENT_LLM_KEY budget is NOW WORKING.",
+  "tested_scope": ["backend"],
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_checks": [
+    "GET /api/ross1000/settings on fresh user -> 200 with defaults {codice_struttura:'', camere_disponibili:1, letti_disponibili:2}",
+    "POST /api/ross1000/settings upsert idempotent — overwriting values persists correctly (verified via GET)",
+    "GET /api/ross1000/preview returns 400 'Configura prima il codice struttura...' when settings not configured",
+    "GET /api/ross1000/export-xml returns 400 when settings not configured",
+    "After configuring codice='058091TESTXX', camere=2, letti=4 and creating 2 overlapping bookings (Mario Rossi ITALIA Airbnb 03/05-03/08, Jean Dupont FRANCIA Booking 03/07-03/10 in 2026-03), preview returns total_arrivi=2, total_partenze=2, total_presenze=6 (nights sum), days_in_month=31, by_country [ITALIA:1, FRANCIA:1], codice_struttura echoed",
+    "GET /api/ross1000/export-xml Content-Type application/xml, Content-Disposition attachment filename=ross1000_2026_03.xml",
+    "XML starts with <?xml version=\"1.0\" encoding=\"UTF-8\"?>, contains <movimenti> root with <codice>058091TESTXX</codice> and <prodotto>CASABNB</prodotto>",
+    "Exactly 31 <movimento> elements (one per day of March 2026), all <data> in YYYYMMDD (20260301..20260331)",
+    "Every day has <struttura> block with <apertura>SI</apertura>, <cameredisponibili>2</cameredisponibili>, <lettidisponibili>4</lettidisponibili> (31 occurrences each)",
+    "Camereoccupate math verified per day: 20260305=1, 20260306=1, 20260307=2 (overlap), 20260308=1, 20260309=1, 20260304=0, 20260310=0",
+    "<arrivi>/<arrivo> blocks contain <tipoalloggiato>16</tipoalloggiato>, cognome/nome uppercased (ROSSI/MARIO, DUPONT/JEAN), <sesso>M</sesso>, <datanascita>19850412</datanascita> in YYYYMMDD",
+    "Country mapping: ITALIA -> <cittadinanza>100000100</cittadinanza>, FRANCIA -> <cittadinanza>100000203</cittadinanza>",
+    "Channel mapping: Airbnb->AIRBNB, Booking->BOOKING.COM, Direct->DIRETTA WEB, Other->ALTRO PORTALE — all present in XML",
+    "<partenze>/<partenza> blocks generated for the 2 checkout days (03-08 and 03-10)",
+    "All 4 ROSS 1000 endpoints (GET/POST settings, GET preview, GET export-xml) return 401 without auth cookie",
+    "REGRESSION: all previous 17 tests still green — auth (login/me/protected-401), dashboard stats shape, bookings CRUD + net_revenue math (Airbnb/Booking/Direct), public registration multipart+photo, alloggiati preview/export/export-zip, inventory CRUD, expenses CRUD",
+    "REGRESSION: /api/pricing/suggest now works (was failing in iterations 1 & 2 due to LLM key budget — key has been topped up, returns valid JSON with suggested_price/min_price/max_price/reasoning/nights/total_suggested)"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_ross1000.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/app/test_reports/pytest/pytest_ross1000.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "ross1000.py:127 luogoresidenza uses .upper()[:30] before escape() — for XML consistency it should escape() first then substring. Currently OK because place_of_birth values in tests are ASCII, but a name like 'D'Aosta' with an apostrophe could produce malformed XML if the escape output exceeds 30 chars after truncation. Consider: escape(value)[:30].",
+    "ross1000.py:127 for non-Italian citizens luogoresidenza is hardcoded to 'XX' — spec may require a proper foreign city/comune code. Verify with ROSS1000 tracciato PDF for foreign guests.",
+    "server.py:661 uses __import__('calendar').monthrange — since 'from calendar import monthrange' is already imported in ross1000.py, and server.py already imports 'from datetime import ... date' — clean this up: 'from calendar import monthrange' at top of server.py.",
+    "server.py:679 endpoint /api/ross1000/export-xml uses response_class=PlainTextResponse and then returns PlainTextResponse(xml, media_type='application/xml',...). The response_class hint is misleading; either remove it or switch to a dedicated Response. Currently works because media_type is overridden in the constructor.",
+    "ross1000.py by_country uses raw citizenship string uppercased instead of the ISTAT code — the preview UI shows 'ITALIA' / 'FRANCIA' but XML uses codes. Consistent, but users may want to see codes too in preview for verification.",
+    "server.py is now 727 lines — over the 700-line threshold. Consider splitting into modules (auth.py, bookings.py, alloggiati.py, ross1000_routes.py).",
+    "Preview endpoint does not paginate booking query (.to_list(2000)) — fine for a single month but hard limit; could silently drop data for very active properties."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_ross1000.py (NEW — 9 pytest tests covering all ROSS 1000 requirements)"
+  ],
+  "success_rate": {"backend": "100% (26/26)", "frontend": "not tested (per request)"},
+  "test_credentials": "admin@bnb.it / admin123 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Each test class creates its own isolated user via /api/auth/register (email format ross_iso_<hex>@example.it) and creates test bookings scoped to that user; teardown deletes all bookings created for the isolated user. Admin-scoped tests use TEST_-prefixed names.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "ROSS 1000 backend module is fully verified with 100% pass rate. Frontend integration (Impostazioni ROSS 1000 form, preview panel showing arrivi/partenze/presenze/occupancy_pct, download XML button, Italian UI copy) is NOT tested here — main agent should request UI iteration if the front-end wiring needs verification. LLM key is now working — /api/pricing/suggest returns valid results. Total suite has 26 tests across /app/backend/tests/backend_test.py + test_ross1000.py, all passing in ~10s."
+}

@@ -1,11 +1,8 @@
 import axios from "axios";
 
-// 1. Diamo la massima priorità all'URL esterno di config.js per la versione Etsy
-// Se non esiste, scala in automatico su Vite, process.env o localhost
+// Legge l'URL dal file config.js modificabile dal cliente esternamente
 const BACKEND_URL = 
-  window.APP_CONFIG?.BACKEND_URL || 
-  import.meta.env?.VITE_API_URL || 
-  process.env?.REACT_APP_BACKEND_URL || 
+  (window.APP_CONFIG && window.APP_CONFIG.BACKEND_URL) || 
   "http://localhost:8000";
 
 // Puliamo l'URL se per caso finisce già con /api, evitiamo di raddoppiarlo

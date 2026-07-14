@@ -1,0 +1,46 @@
+{
+  "summary": "Iteration 4 — Frontend UI-only verification of reported bug fix on /ospiti (Guests page). The browser confirm() call was replaced with a shadcn AlertDialog. Verified end-to-end via Playwright against the public preview URL: Cancel path, Delete path (with DELETE /api/bookings/{id} returning 200 and 'Prenotazione eliminata' toast), plus regression on Aggiungi (POST 200) and Edit (PUT 200). All 7 sidebar routes load without errors.",
+  "tested_scope": ["frontend"],
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Dashboard/Prezzi charts", "issues": ["Recharts ResponsiveContainer emits repeated console warnings: 'The width(-1) and height(-1) of chart should be greater than 0' — chart container has no explicit minWidth/minHeight or aspect. Cosmetic (charts still render eventually), but pollutes console."]},
+      {"screen": "Guests dialogs (Nuovo/Modifica ospite)", "issues": ["Radix DialogContent warns: 'Missing Description or aria-describedby' — accessibility hint. Add DialogDescription or aria-describedby to the Dialog on Guests.jsx line 116 for a11y compliance."]}
+    ]
+  },
+  "passed_checks": [
+    "Login with admin@bnb.it/admin123 → redirects and cookies set",
+    "Sidebar nav-guests → /ospiti loads with guests-table testid present",
+    "Click delete-<id> → AlertDialog opens with title 'Eliminare la prenotazione?', description mentions guest name + dates, buttons confirm-delete-ok and confirm-delete-cancel both visible",
+    "Cancel path: click confirm-delete-cancel → dialog closes, row remains, no DELETE fired",
+    "Delete path: click confirm-delete-ok → DELETE /api/bookings/{id} returned 200, toast 'Prenotazione eliminata' shown, row removed from table",
+    "Regression Aggiungi: btn-add-guest opens Nuovo ospite dialog, filling Nome/Cognome/Check-in/Check-out and clicking guest-save → POST /api/bookings 200, toast 'Salvato', row appears",
+    "Regression Modifica: edit-<id> opens Modifica ospite dialog with fields prefilled, edit + save → PUT /api/bookings/{id} 200, toast 'Salvato', new value visible in table",
+    "Regression navigation: nav-dashboard, nav-calendar, nav-inventory, nav-expenses, nav-pricing, nav-alloggiati, nav-ross1000 all load without on-page error text"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/backend/tests/test_ross1000.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "OPTIONAL/COSMETIC: Add DialogDescription or aria-describedby to the guests dialog for accessibility (Radix warning)",
+    "OPTIONAL/COSMETIC: Fix Recharts ResponsiveContainer minWidth/minHeight to silence chart warnings"
+  ],
+  "critical_code_review_comments": [
+    "Guests.jsx line 30: api.get('/bookings').then(...) has no .catch — a transient network failure would leave `items` in a stale state with no user feedback. Wrap load() in try/catch and show a toast.error on failure.",
+    "Guests.jsx confirmDelete: on error the deleteId is cleared but load() is not called — if the backend actually deleted but returned an error, the UI would show the stale row. Consider calling load() in a finally block.",
+    "Guests.jsx: form has no client-side validation before submit — empty Nome/Cognome or invalid checkout<checkin will hit the API and rely on backend error. Add basic validation and disable Salva when required fields empty.",
+    "Existing minor code review comments from iteration 3 still apply (server.py >700 lines, ross1000.py escape order, __import__ vs proper import)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not re-tested (100% in iteration 3)", "frontend": "100% (all requested flows pass)"},
+  "test_credentials": "admin@bnb.it / admin123",
+  "seed_data_creation": "Created and cleaned up a test booking (TESTRegr UtenteQA 2026-07-10→2026-07-12) during the create+edit+delete regression. No residual test data remains — the guests table is empty at the end of the run.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Reported bug is fully fixed and verified via Playwright against the public URL. The AlertDialog appears reliably (data-testids: confirm-delete-ok, confirm-delete-cancel), the DELETE API is called on OK, and the row is removed with proper toast. No further action needed on this bug. Two cosmetic console warnings remain (Recharts sizing on Dashboard/Prezzi, and Radix DialogContent aria-describedby on Guests dialog) — not blocking, but low-hanging a11y/console cleanup for future polish.",
+  "rca_of_the_issue": "ROOT CAUSE: The Emergent preview environment runs the React app inside a sandboxed iframe. Modern browsers silently suppress window.confirm() calls originating from iframes with certain sandbox flags (specifically when allow-modals is not present), so the previous synchronous confirm() dialog never rendered and its return value was always false, causing the delete handler to short-circuit. MITIGATION: Replace native confirm() with the shadcn AlertDialog primitive (Radix). The dialog renders inside the app's own DOM tree (a Portal to document.body) so it is unaffected by iframe sandbox policies. FIX VERIFIED: AlertDialog now opens reliably, both Cancel and OK paths behave correctly, DELETE /api/bookings/{id} returns 200, row is removed, and the 'Prenotazione eliminata' toast confirms user feedback. RECOMMENDATION for future: audit the codebase for any remaining window.confirm / window.alert / window.prompt calls and replace them with in-app dialogs to guarantee behavior in the preview iframe."
+}

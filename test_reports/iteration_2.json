@@ -1,0 +1,60 @@
+{
+  "summary": "Iteration 2 backend regression — verified no backend regression after frontend code-quality refactor (useCallback, useMemo, extracted chart configs, flattened ternaries, extracted PreviewRecord). 16/17 pytest checks pass. Only failure is /api/pricing/suggest (500) which is a KEY/BUDGET issue on EMERGENT_LLM_KEY — same root cause reported in iteration_1, still not fixed by main agent. Every other endpoint listed in the review request works exactly as expected.",
+  "tested_scope": ["backend"],
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/pricing/suggest",
+        "issue": "Returns 500 'Errore AI: Failed to generate chat completion: litellm.BadRequestError: OpenAIException - Budget has been exceeded! Current cost: 0.003468, Max budget: 0.001'. The EMERGENT_LLM_KEY (sk-emergent-c83F86643E8Ad76028) has a max budget of $0.001 which is exhausted. Code path is correct (LlmChat + claude-sonnet-4-5-20250929 + JSON parse) — this is purely an external key/budget configuration issue.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_checks": [
+    "POST /api/auth/login admin@bnb.it/admin123 -> 200, sets httpOnly access_token + refresh_token cookies (Set-Cookie has HttpOnly flag)",
+    "POST /api/auth/login with wrong password -> 401",
+    "GET /api/auth/me with cookie -> 200 returns admin user, no password_hash / _id leaked",
+    "GET /api/auth/me, /api/bookings, /api/dashboard/stats, /api/inventory, /api/expenses, /api/alloggiati/preview, /api/alloggiati/export, /api/alloggiati/export-zip without cookie all -> 401",
+    "GET /api/dashboard/stats returns full shape: total_gross, total_net, year_gross, year_net, occupancy_pct, total_bookings, year_bookings, channels[], monthly[]",
+    "POST /api/bookings net_revenue math: Airbnb (gross*0.97*0.79), Booking (gross*0.85*0.79), Direct (gross*0.79) — all exact",
+    "Full booking CRUD (create/list/update recalculates nights+net_revenue/delete verified via GET)",
+    "POST /api/public/registration (multipart form + photo upload) -> 200, admin sees booking with owner_id=admin, source='public_form', photo_paths populated",
+    "GET /api/public/property-info -> 200 active=true",
+    "GET /api/alloggiati/preview returns total + records[] with valid flag",
+    "GET /api/alloggiati/export returns text/plain with Content-Disposition attachment",
+    "GET /api/alloggiati/export-zip returns application/zip containing alloggiati_*.txt + LEGGIMI.txt + foto_documenti/ entries",
+    "Inventory POST/GET/PUT/DELETE all work with owner_id scoping",
+    "Expenses POST/GET/PUT (paid toggle persisted)/DELETE all work with owner_id scoping"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Top up / replace EMERGENT_LLM_KEY in /app/backend/.env — current key has Max budget: $0.001 which is exhausted. Once refreshed, /api/pricing/suggest will work (code path verified correct)."
+  ],
+  "critical_code_review_comments": [
+    "server.py line 361 & 393: list_inventory and list_expenses reuse serialize_booking() to strip _id — works but function name is misleading; should be a generic serialize_doc().",
+    "server.py line 627: uses deprecated @app.on_event('startup'/'shutdown') — should migrate to lifespan context manager (FastAPI recommends).",
+    "server.py cookies use samesite='none' + secure=True which is correct for the emergentagent HTTPS preview host — will need verification if ever deployed on http://.",
+    "server.py CORS uses allow_origins=[FRONTEND_URL, 'http://localhost:3000'] with allow_credentials=True — good, no wildcard.",
+    "seed_admin at startup correctly updates password_hash if ADMIN_PASSWORD changes — idempotent (line 644).",
+    "server.py is 659 lines — approaching the 700-line threshold; consider splitting into modules (auth.py, bookings.py, alloggiati.py) soon."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (created — pytest suite covering all endpoints in review request)"
+  ],
+  "success_rate": {"backend": "94.1% (16/17)", "frontend": "not tested (per request)"},
+  "test_credentials": "admin@bnb.it / admin123 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Tests self-clean: all created bookings/inventory/expenses are deleted at end of each test. TEST_-prefixed names used.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend is stable across iterations 1 and 2. The refactor was purely frontend (useCallback/useMemo/chart configs/ternaries) and no backend logic changed — regression confirmed clean. The only red flag is EMERGENT_LLM_KEY budget = $0.001 which is exhausted; /api/pricing/suggest will return 500 until the key is topped up. Frontend testing (Dashboard KPIs render, Login refactor, Alloggiati PreviewRecord component, PublicRegistration useEffect deps) should be verified in a UI-testing iteration if requested.",
+  "rca_of_pricing_failure": "Root cause: EMERGENT_LLM_KEY in /app/backend/.env has Max budget: 0.001 USD as reported by litellm. The Claude Sonnet 4.5 call spends ~0.003 USD per request so every single request 500s. Reproduction: POST /api/pricing/suggest with any valid payload. Mitigation: main agent must replace or top up the EMERGENT_LLM_KEY and restart the backend (sudo supervisorctl restart backend). No code fix required."
+}

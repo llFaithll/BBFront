@@ -1,3 +1,1 @@
-window.APP_CONFIG = {
-    BACKEND_URL: "INSERISCI_QUI_URL_RENDER"
-};
+window.APP_CONFIG = { BACKEND_URL: "https://IL_TUO_LINK_RENDER_DEFAULT.onrender.com" };

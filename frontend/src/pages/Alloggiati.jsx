@@ -52,10 +52,7 @@ export default function Alloggiati() {
   const [preview, setPreview] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  // Modifica Etsy: Estrae l'URL principale per comporre il link della pagina di registrazione pubblica dell'ospite
-  const serverBaseUrl = (api.defaults.baseURL || "").replace("/api", "");
-  const publicUrl = `${serverBaseUrl}/registra`;
-  
+  const publicUrl = `${window.location.origin}/registra`;
   const whatsappMsg = encodeURIComponent(
     `Ciao! Grazie per aver scelto la nostra struttura. Per completare la registrazione richiesta dalla Polizia di Stato, compila questo modulo: ${publicUrl}`
   );

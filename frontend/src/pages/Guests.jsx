@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Pencil, Trash, Plus, FilePdf } from "@phosphor-icons/react";
+import { Pencil, Trash, Plus } from "@phosphor-icons/react";
 
 const MONTHS = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
 
@@ -55,30 +55,6 @@ export default function Guests() {
     }
   };
 
-  const handleDownloadReceipt = (booking) => {
-    // 1. Chiediamo il numero totale di ospiti usando il pop-up nativo del browser
-    const ospiti = window.prompt("Quanti ospiti totali per questa ricevuta?", "1");
-    if (!ospiti) return; 
-
-    // 2. Chiediamo se ci sono bambini esenti
-    const haBambini = window.confirm("Ci sono bambini esenti dalla tassa di soggiorno tra questi ospiti?");
-    let bambini = 0;
-    
-    if (haBambini) {
-      const quantiBambini = window.prompt("Quanti bambini sotto la soglia di età esenzione?", "0");
-      bambini = parseInt(quantiBambini) || 0;
-    }
-
-    // 3. Estraiamo l'URL di base configurato nell'istanza di Axios (api.js) o usiamo Render come fallback
-    const baseUrl = api.defaults.baseURL || "https://gestionale-bnb-backend.onrender.com";
-
-    // 4. Apriamo la ricevuta PDF in una nuova scheda avviando il download
-    window.open(`${baseUrl}/api/bookings/${booking.id}/receipt-pdf?guests_count=${ospiti}&kids_count=${bambini}`, '_blank');
-  };
-
-  // Modifica Etsy: Estrae l'URL dinamico del server rimuovendo /api per recuperare i file statici (foto)
-  const serverUrl = (api.defaults.baseURL || "").replace("/api", "");
-
   const deleteTarget = items.find((b) => b.id === deleteId);
 
   return (
@@ -118,19 +94,13 @@ export default function Guests() {
                   <td className="px-4 py-3"><span className="text-xs px-2 py-1 rounded bg-muted">{b.channel}</span></td>
                   <td className="px-4 py-3">
                     {b.photo_paths?.length > 0 ? (
-                      <button
-                        onClick={() => window.open(`${serverUrl}/${b.photo_paths[0]}`, '_blank')}
-                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                        data-testid={`photos-${b.id}`}
-                        title="Visualizza foto documento"
-                      >
+                      <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-primary/10 text-primary" data-testid={`photos-${b.id}`}>
                         📎 {b.photo_paths.length}
-                      </button>
+                      </span>
                     ) : <span className="text-xs text-muted-foreground">—</span>}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
-                      <button onClick={() => handleDownloadReceipt(b)} title="Scarica Ricevuta PDF" className="p-1.5 rounded text-emerald-600 hover:bg-emerald-50 transition-colors"><FilePdf size={14} /></button>
                       <button onClick={() => openEdit(b)} data-testid={`edit-${b.id}`} className="p-1.5 rounded hover:bg-muted transition-colors"><Pencil size={14} /></button>
                       <button onClick={() => setDeleteId(b.id)} data-testid={`delete-${b.id}`} className="p-1.5 rounded hover:bg-destructive/10 hover:text-destructive transition-colors"><Trash size={14} /></button>
                     </div>

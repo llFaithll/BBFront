@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { api, eur, formatApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Sparkle, SlidersHorizontal } from "@phosphor-icons/react";
+import { Sparkle } from "@phosphor-icons/react";
 
 export default function Pricing() {
   const [form, setForm] = useState({
@@ -14,19 +14,6 @@ export default function Pricing() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
 
-  // Stati dedicati alla configurazione della tassa di soggiorno
-  const [taxSettings, setTaxSettings] = useState({
-    fee_per_night: 3.50, max_nights: 10, kids_under_age: 10
-  });
-  const [taxBusy, setTaxBusy] = useState(false);
-
-  // Caricamento iniziale delle impostazioni della tassa
-  useEffect(() => {
-    api.get("/settings/tourist-tax")
-      .then((r) => setTaxSettings(r.data))
-      .catch((e) => console.error("Errore caricamento parametri tassa:", e));
-  }, []);
-
   const submit = async () => {
     setBusy(true); setResult(null);
     try {
@@ -34,16 +21,6 @@ export default function Pricing() {
       setResult(data); toast.success("Suggerimento generato");
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
     finally { setBusy(false); }
-  };
-
-  const saveTaxSettings = async (e) => {
-    e.preventDefault();
-    setTaxBusy(true);
-    try {
-      await api.post("/settings/tourist-tax", taxSettings);
-      toast.success("Parametri tassa aggiornati");
-    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
-    finally { setTaxBusy(false); }
   };
 
   return (
@@ -93,36 +70,6 @@ export default function Pricing() {
             </div>
           )}
         </div>
-      </div>
-
-      {/* Sezione Nuova: Configurazione Imposta di Soggiorno */}
-      <div className="mt-8 max-w-xl border border-border rounded-md bg-card p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <SlidersHorizontal size={16} className="text-muted-foreground" />
-          <div className="overline">Parametri Nazionali & Comunali</div>
-        </div>
-        <h2 className="font-serif text-2xl mb-1">Imposta di Soggiorno</h2>
-        <p className="text-xs text-muted-foreground mb-4">Regola i criteri di calcolo per l'emissione automatica delle ricevute PDF fiscali e non.</p>
-        
-        <form onSubmit={saveTaxSettings} className="space-y-4 text-sm">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <Label className="text-xs">Quota (€/notte)</Label>
-              <Input type="number" step="0.01" value={taxSettings.fee_per_night} onChange={(e) => setTaxSettings({...taxSettings, fee_per_night: parseFloat(e.target.value) || 0})} className="mt-1" />
-            </div>
-            <div>
-              <Label className="text-xs">Massimo Notti</Label>
-              <Input type="number" value={taxSettings.max_nights} onChange={(e) => setTaxSettings({...taxSettings, max_nights: parseInt(e.target.value) || 0})} className="mt-1" />
-            </div>
-            <div>
-              <Label className="text-xs">Esenzione Minori (Anni)</Label>
-              <Input type="number" value={taxSettings.kids_under_age} onChange={(e) => setTaxSettings({...taxSettings, kids_under_age: parseInt(e.target.value) || 0})} className="mt-1" />
-            </div>
-          </div>
-          <Button type="submit" disabled={taxBusy} className="w-full sm:w-auto rounded-md bg-primary text-primary-foreground">
-            {taxBusy ? "Salvataggio..." : "Aggiorna parametri tassa"}
-          </Button>
-        </form>
       </div>
     </div>
   );
