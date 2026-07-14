@@ -14,21 +14,23 @@ export default function Pricing() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
 
-  // Stato per la configurazione della Tassa di Soggiorno
+  // Stato completo per la configurazione della Tassa di Soggiorno e delle Info Intestazione
   const [taxSettings, setTaxSettings] = useState({
     fee_per_night: 3.5,
     max_nights: 10,
     kids_under_age: 10,
+    property_name: "Casa B&B",
+    manager_name: ""
   });
   const [savingTax, setSavingTax] = useState(false);
 
-  // Carica le impostazioni della tassa di soggiorno all'avvio
+  // Carica le impostazioni all'avvio
   useEffect(() => {
     api.get("/settings/tourist-tax")
       .then((r) => {
         if (r.data) setTaxSettings(r.data);
       })
-      .catch((e) => console.error("Errore nel caricamento della tassa di soggiorno:", e));
+      .catch((e) => console.error("Errore nel caricamento delle impostazioni:", e));
   }, []);
 
   const submit = async () => {
@@ -40,12 +42,12 @@ export default function Pricing() {
     finally { setBusy(false); }
   };
 
-  // Funzione per salvare le regole della tassa di soggiorno
+  // Salva le regole della tassa di soggiorno e l'intestazione
   const saveTaxSettings = async () => {
     setSavingTax(true);
     try {
       await api.post("/settings/tourist-tax", taxSettings);
-      toast.success("Impostazioni della Tassa di Soggiorno salvate con successo!");
+      toast.success("Impostazioni salvate con successo!");
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail));
     } finally {
@@ -80,45 +82,68 @@ export default function Pricing() {
             </Button>
           </div>
 
-          {/* Sezione Tassa di Soggiorno Comune */}
+          {/* Sezione Tassa di Soggiorno e Intestazione Ricevute */}
           <div className="border border-border rounded-md bg-card p-6">
             <div className="flex items-center gap-2 mb-4">
               <House size={20} className="text-primary" weight="duotone" />
-              <div className="overline">Regolamento Tassa di Soggiorno</div>
+              <div className="overline">Impostazioni Struttura & Ricevute</div>
             </div>
             <p className="text-xs text-muted-foreground mb-4">
-              Configura i parametri del tuo comune. Questi valori verranno usati per calcolare l'importo corretto ed esonerare i bambini all'interno delle ricevute PDF degli ospiti.
+              Configura i parametri del tuo comune per calcolare la tassa di soggiorno corretta e personalizza i dati che appariranno nelle intestazioni delle ricevute in formato PDF.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <Label>Tariffa (€/notte)</Label>
-                <Input 
-                  type="number" 
-                  step="0.01" 
-                  value={taxSettings.fee_per_night} 
-                  onChange={(e) => setTaxSettings({ ...taxSettings, fee_per_night: parseFloat(e.target.value) || 0 })} 
-                />
+            <div className="space-y-4">
+              {/* Nuovi Campi di Testo Personalizzabili */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <Label>Nome Struttura</Label>
+                  <Input 
+                    placeholder="Es. Casa B&B"
+                    value={taxSettings.property_name || ""} 
+                    onChange={(e) => setTaxSettings({ ...taxSettings, property_name: e.target.value })} 
+                  />
+                </div>
+                <div>
+                  <Label>Nome Gestore / Host</Label>
+                  <Input 
+                    placeholder="Es. Mario Rossi"
+                    value={taxSettings.manager_name || ""} 
+                    onChange={(e) => setTaxSettings({ ...taxSettings, manager_name: e.target.value })} 
+                  />
+                </div>
               </div>
-              <div>
-                <Label>Notti Massime</Label>
-                <Input 
-                  type="number" 
-                  value={taxSettings.max_nights} 
-                  onChange={(e) => setTaxSettings({ ...taxSettings, max_nights: parseInt(e.target.value) || 0 })} 
-                />
-              </div>
-              <div>
-                <Label>Esenzione Età (Sotto)</Label>
-                <Input 
-                  type="number" 
-                  value={taxSettings.kids_under_age} 
-                  onChange={(e) => setTaxSettings({ ...taxSettings, kids_under_age: parseInt(e.target.value) || 0 })} 
-                />
+
+              {/* Parametri Tassa di Soggiorno */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <Label>Tariffa (€/notte)</Label>
+                  <Input 
+                    type="number" 
+                    step="0.01" 
+                    value={taxSettings.fee_per_night} 
+                    onChange={(e) => setTaxSettings({ ...taxSettings, fee_per_night: parseFloat(e.target.value) || 0 })} 
+                  />
+                </div>
+                <div>
+                  <Label>Notti Massime</Label>
+                  <Input 
+                    type="number" 
+                    value={taxSettings.max_nights} 
+                    onChange={(e) => setTaxSettings({ ...taxSettings, max_nights: parseInt(e.target.value) || 0 })} 
+                  />
+                </div>
+                <div>
+                  <Label>Esenzione Età (Sotto)</Label>
+                  <Input 
+                    type="number" 
+                    value={taxSettings.kids_under_age} 
+                    onChange={(e) => setTaxSettings({ ...taxSettings, kids_under_age: parseInt(e.target.value) || 0 })} 
+                  />
+                </div>
               </div>
             </div>
-            <Button onClick={saveTaxSettings} disabled={savingTax} variant="secondary" className="w-full mt-4 rounded-md">
+            <Button onClick={saveTaxSettings} disabled={savingTax} variant="secondary" className="w-full mt-6 rounded-md">
               <Check size={16} className="mr-2" />
-              {savingTax ? "Salvataggio..." : "Salva Regole Comune"}
+              {savingTax ? "Salvataggio..." : "Salva Configurazione"}
             </Button>
           </div>
         </div>
