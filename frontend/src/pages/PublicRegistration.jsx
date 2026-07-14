@@ -41,7 +41,6 @@ export default function PublicRegistration() {
 
   useEffect(() => { loadInfo(); }, [loadInfo]);
 
-  // Aggiunge un blocco form per un ospite extra
   const addAdditionalGuest = () => {
     setAdditionalGuests([
       ...additionalGuests,
@@ -50,20 +49,18 @@ export default function PublicRegistration() {
         date_of_birth: "", place_of_birth: "",
         country_of_birth: "ITALIA", citizenship: "ITALIA", sex: "M",
         document_type: "IDENT", document_number: "", document_place: "",
-        guest_type: "17", // 17 = Ospite singolo (Alloggiati Web)
+        guest_type: "17",
         photos: []
       }
     ]);
   };
 
-  // Rimuove un blocco ospite extra
   const removeAdditionalGuest = (index) => {
     const updated = [...additionalGuests];
     updated.splice(index, 1);
     setAdditionalGuests(updated);
   };
 
-  // Modifica un campo specifico di un ospite extra
   const updateAdditionalGuestField = (index, field, value) => {
     const updated = [...additionalGuests];
     updated[index][field] = value;
@@ -76,19 +73,19 @@ export default function PublicRegistration() {
     try {
       const fd = new FormData();
       
-      # 1. Alleghiamo l'anagrafica del Capogruppo
+      // 1. Alleghiamo l'anagrafica del Capogruppo
       Object.entries(form).forEach(([k, v]) => fd.append(k, v));
       
-      # Alleghiamo il file del documento del capogruppo (prendiamo il primo file)
+      // Alleghiamo il file del documento del capogruppo (prendiamo il primo file)
       if (mainPhotos.length > 0) {
         fd.append("main_photo", mainPhotos[0]);
       }
 
-      # 2. Generiamo l'anagrafica JSON degli ospiti extra priva del file binario temporaneo
+      // 2. Generiamo l'anagrafica JSON degli ospiti extra priva del file binario temporaneo
       const additionalGuestsMetadata = additionalGuests.map(({ photos, ...meta }) => meta);
       fd.append("additional_guests_json", JSON.stringify(additionalGuestsMetadata));
 
-      # 3. Alleghiamo in modo indicizzato i file dei documenti di ciascun ospite extra
+      // 3. Alleghiamo in modo indicizzato i file dei documenti di ciascun ospite extra
       additionalGuests.forEach((guest, idx) => {
         if (guest.photos && guest.photos.length > 0) {
           fd.append(`additional_photo_${idx}`, guest.photos[0]);
@@ -108,7 +105,6 @@ export default function PublicRegistration() {
     }
   };
 
-  # Controllo se tutti gli ospiti inseriti (capogruppo + extra) hanno caricato almeno un documento
   const missingDocuments = mainPhotos.length === 0 || additionalGuests.some(g => !g.photos || g.photos.length === 0);
 
   if (done) {
